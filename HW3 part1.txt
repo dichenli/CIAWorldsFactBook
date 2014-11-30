@@ -1,0 +1,6 @@
+Dichen Li, HW 3
+
+Part 1
+1. Project 2.6, Why do Rails routes map to controller actions but not model actions or views?
+Each user action that sends a CRUD request that needs to be processed by a method in controller. So the function of routes is that every incoming HTTP request is mapped to appropriate controller method. Model or View are not for dealing with HTTP requests.
+
