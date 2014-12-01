@@ -8,6 +8,50 @@ class Country
               :capital, :cap_coord_ew, :cap_coord_sn, :party_count, :dominate_religion,
               :landlocked, :border_countries, :uri, :elec_per_capita, :domi_relig_percent,
               :coastline, :resource
+
+  QUERY_HASH = {:"location" => "Location:",
+                :"hazards" =>"Natural hazards:",
+                :"coordinates" => "Geographic coordinates:",
+                :"population" => "Population:",
+                :"electricity consumption" => "Electricity - consumption:",
+                :"lowest point" => "Elevation extremes:",
+                :"highest point" => "Elevation extremes:",
+                :"parties" => "Political parties and leaders:",
+                :"religions" => "Religions:",
+                :"capital"=> "Capital:",
+                :"landlocked" => "Coastline:",
+                :"border countries" => "Land boundaries:",
+                :"natural recources" => "Natural resources:"}
+
+  ASIA = ["Asia", "archipelago in the Indian Ocean", "islands in the Indian Ocean", "middle east", "Middle East"]
+  AFRICA = ["Africa","island in the South Atlantic Ocean"]
+  EUROPE = ["Europe", "Eastern Mediterranean"]
+  NORTH_AMERICA = ["North America", "Northern America", "Caribbean", "Central America",
+                     "chain of islands in the North Atlantic Ocean", "Middle America",
+                     "two island groups in the North Atlantic Ocean"]
+  SOUTH_AMERICA = ["South America"]
+  OCEANIA = ["Oceania"]
+  CONTINENTS_HASH = {ASIA => "asia", AFRICA => "africa", EUROPE => "europe",
+                       NORTH_AMERICA => "north america", SOUTH_AMERICA => "south america", OCEANIA => "oceania"}
+  #Regions to continents mapping
+
+  HAZARD_LIST = { :"earthquake" => "earthquake",
+                  :"flood" => "flood",
+                  :"drought" => "drought",
+                  :"tsunam" => "tsunami",
+                  :"mudslid" => "mudslide",
+                  :"typhoon" => "typhoon",
+                  :"avalanch" => "avalanche",
+                  :"storm" => "storm",
+                  :"hurrican" => "hurricane",
+                  :"windstorm" => "windstorm",
+                  :"cyclon" => "cyclone",
+                  :"forest fire" => "forest fire",
+                  :"maritime hazard" => "maritime hazard",
+                  :"harmattan" => "harmattan",
+                  :"monsoonal rain" => "monsoon rain", :"monsoon rain" => "monsoon rain",
+                  :"volcano" => "volcano", :"volcani" => "volcano"}
+
   def initialize(coun_uri, name)
     @name = name #country name
     @continent = nil  #asia, europe, pacific ocean, Africa, North America, south America
@@ -33,43 +77,16 @@ class Country
     @uri = coun_uri  #uri to the country page
     @noko_page = nil #nokogiri page object of the country page
     @noko_info = nil #information from nokogiri page match
-    @@query_hash = {"location" => "Location:",
-                    "hazards" =>"Natural hazards:",
-                    "coordinates" => "Geographic coordinates:",
-                    "population" => "Population:",
-                    "electricity consumption" => "Electricity - consumption:",
-                    "lowest point" => "Elevation extremes:",
-                    "highest point" => "Elevation extremes:",
-                    "parties" => "Political parties and leaders:",
-                    "religions" => "Religions:",
-                    "capital"=> "Capital:",
-                    "landlocked" => "Coastline:",
-                    "border countries" => "Land boundaries:",
-                    "natural recources" => "Natural resources:"}
+
     #query_hash maps keys, which are queries from users, to values,
     # which are the relative information titles on the page
 
-    @@asia = ["Asia", "archipelago in the Indian Ocean", "islands in the Indian Ocean", "middle east", "Middle East"]
-    @@africa = ["Africa","island in the South Atlantic Ocean"]
-    @@europe = ["Europe", "Eastern Mediterranean"]
-    @@north_america = ["North America", "Northern America", "Caribbean", "Central America",
-                       "chain of islands in the North Atlantic Ocean", "Middle America",
-                       "two island groups in the North Atlantic Ocean"]
-    @@south_america = ["South America"]
-    @@oceania = ["Oceania"]
-    @@continents_hash = {@@asia => "asia", @@africa => "africa", @@europe => "europe",
-                         @@north_america => "north America", @@south_america => "south america", @@oceania => "oceania"}
-    #Regions to continents mapping
-
-    @@hazard_list = ["earthquake", "flood", "drought", "tsunami", "mudslide", "typhoon", "avalanche", "storm",
-                     "hurricane", "windstorm", "cyclone", "forest fire", "maritime hazard", "harmattan",
-                     "monsoonal rain", "monsoon rain", "volcano"]
+   
 
     @noko_page = Nokogiri::HTML(open(@uri))
     @noko_info = @noko_page.css("div").select{|entry| entry["class"] =~ /category.*/}
     #all useful pieces of information are stored in <div> with class="category" or "category_data"
     get_all_info
-    has_resource?("Uranium")
     #get all info about a country at once!
     #puts @name + " done!"
   end
@@ -79,7 +96,7 @@ class Country
   end
 
   def get_all_info #get all information within the class capability of a country from WFB
-    @@query_hash.each {|key, value| retrieve_info(key)}
+    QUERY_HASH.each {|key, value| retrieve_info(key)}
   end
 
   def retrieve_info(query)
@@ -87,7 +104,7 @@ class Country
     #query tells what kind of info you are interested in
     #each piece of info is always between <div> tags, parent category has class="category" and id="field"
     #information has class="category" or "category_data" and id="data"
-    return nil if (target = @@query_hash[query]) == nil
+    return nil if (target = QUERY_HASH[query]) == nil
     flag = nil
     @noko_info.each do |info|
       flag = category_match(target, info) if info["id"] == "field"
@@ -120,16 +137,16 @@ class Country
     return find_elev_extreme(info, target) if target == "Elevation extremes:"
     return find_capital(info, target) if target == "Capital:"
     return find_resource(info) if target == "Natural resources:"
-    puts "exceptions! Not covered in assign value method"
-    return nil
-  end
 
+    #error if no match
+    raise ArgumentError, "exceptions! Not covered in assign value method"
+  end
 
   def find_location(info)
     #find the continent of the country
     #store location description to region as it is
     @region = info.text.strip.downcase
-    @@continents_hash.each do |key, value|
+    CONTINENTS_HASH.each do |key, value|
       key.to_a.each do |string|
         if @region.downcase.include?(string.downcase)
           @continent = value
@@ -147,18 +164,14 @@ class Country
     return nil
   end
 
-  def has_resource?(resource_name)
-    #return true if the country has the input resource
-    return false unless resource_name.class == String and @resource != nil
-    #puts @name, resource_name
-    #puts @resource.include?(resource_name.downcase)
-    return @resource.include?(resource_name.downcase)
-  end
-
   def find_hazards(info)
     #content is the next info after title
-    matched = info.text.strip.downcase
-    @@hazard_list.each{|item| @hazards.push(item) if matched.include?(item)}
+    hazard_text = info.text.strip.downcase
+    HAZARD_LIST.each do |key, value|
+      if hazard_text.include?(key.to_s) and not @hazards.include?(value)
+        @hazards.push(value)
+      end
+    end
     return nil #info won't be overwritten
   end
 
@@ -295,9 +308,17 @@ class Country
     return target
   end
 
+  def has_resource?(resource_name)
+    #return true if the country has the input resource
+    return false unless resource_name.class == String and @resource != nil
+    #puts @name, resource_name
+    #puts @resource.include?(resource_name.downcase)
+    return @resource.include?(resource_name.downcase)
+  end
+
   def in_continent?(continent_input)
     #return true if the country is in the corresponding continent
-    return false if continent_input.class != String
+    return false if continent_input.class != String or continent_input.chomp == ""
     retrieve_info("location")
     return false if @continent == nil
     return true if continent_input.downcase.include?(@continent)
@@ -307,8 +328,8 @@ class Country
 
   def has_hazard?(hazard_type)
     #return true if the country has the hazard type
-    return nil unless hazard_type.class == String
-    retrieve_info("hazards")
+    return false unless hazard_type.class == String and hazard_type.chomp != ""
+    retrieve_info("hazards") if @hazards.size == 0
     @hazards.each do |elem|
       return true if hazard_type.downcase.include?(elem.downcase)
       return true if elem.downcase.include?(hazard_type.downcase)
@@ -330,8 +351,7 @@ class Country
 #end of class
 end
 
-
-class WorldsFactbook
+class WorldsFactBook
 
   def initialize
     @non_country = ["oo", "xx", "ee", "ay", "xq", "zh", "zn", "xo"]#except World, several oceans and European Union
@@ -347,25 +367,43 @@ class WorldsFactbook
     end
   end
 
+  def valid_continent?(continent)
+    return false unless continent.class == String
+    continents = ["asia", "africa", "europe", "north america", "south america", "oceania"]
+    return continents.include?(continent.chomp.downcase)
+  end
+
   def list_geohazard_countries(continent, hazard_type)
     #find all countries in one continent that has the given hazard type
+    return nil unless valid_continent?(continent)
+    hazards = ["earthquake", "flood", "drought", "tsunami", "mudslide", "typhoon", "avalanche", "storm",
+               "hurricane", "windstorm", "cyclone", "forest fire", "maritime hazard", "harmattan",
+               "monsoonal rain", "monsoon rain", "volcano"]
+    hazard_type = hazard_type.chomp.to_s.strip.downcase
+    return nil unless hazards.include?(hazard_type)
     count_list = Array.new
     @countries.each do |country|
       if country.in_continent?(continent) and country.has_hazard?(hazard_type)
         count_list.push(country)
       end
     end
-    return count_list
+    return count_list.map{|country| country.name}
   end
 
   def lowest_point_country(continent)
+    return nil unless valid_continent?(continent)
     #find the country with the lowest elevation point in one continent
     lowest_country = @countries.each{ |country| country.retrieve_info("region") #make sure region info is retrieved
     }.select{|country| country.in_continent?(continent) #find countries in that continent
     }.each{|country| country.retrieve_info("lowest point") #find lowest point of each country
     }.select{|country| country.altitude_min != nil #lowest point info found
     }.min{|country1, country2| country1.altitude_min <=> country2.altitude_min} #find the min of lowest point
-    return lowest_country
+
+    begin
+      return lowest_country.name #in case lowest_country == nil or similar cases
+    rescue
+      return nil
+    end
   end
 
   def countries_hemisphere(hemisphere)
@@ -376,17 +414,18 @@ class WorldsFactbook
     match = nil
     hemispheres.each{|key, value| match = value if key.include?(hemisphere.downcase)}
     return nil if match == nil
-    in_hemisphere = @countries.select {
+    in_hemisphere = @countries.select {#select countries which coordinates match the corresponding hemisphere
         |country| country.coordinate_sn * match[0] >= 0 and country.coordinate_ew * match[1] >= 0
-    } #select countries which coordinates match the corresponding hemisphere
+    }.map{|country| country.name}
     return in_hemisphere
   end
 
   def continent_parties_num (continent, num)
     #find out the countries in the given continent with more than #num of parties
-    return nil unless num.class == Fixnum and num >= 0
+    return [] unless valid_continent?(continent)
+    return [] unless num.class == Fixnum and num >= 0
     list = @countries.select{|country| country.in_continent?(continent)
-    }.select{|country| country.party_count >= num}
+    }.select{|country| country.party_count >= num}.map{|country| country.name}
     return list
   end
 
@@ -420,6 +459,7 @@ class WorldsFactbook
 
   def coastline_rank(country_name)
     #given a country name, this method tells the rank of its coastline length among countries
+    return nil if country_name.class != String
     matched = nil
     @countries.each do |country|
       if country_name == country.name
@@ -436,23 +476,24 @@ class WorldsFactbook
       rank = index + 1
       break if country.coastline <= matched.coastline
     end
-    #puts "The rank of coastline length of #{country_name} is :#{rank}"
     return rank
   end
 
   def country_resource(resource)
     #find all countries with the given kind of resource (as a string)
+    return nil if resource.class != String
     resource = resource.strip.downcase
-    return @countries.select{|country| country.has_resource?(resource)}
+    return nil if resource == ""
+    return @countries.select{|country| country.has_resource?(resource)}.map{|country| country.name}
   end
 
-  def landlocked
-    @countries.select{|country| country.border_countries == 1 and country.landlocked}
+  def landlocked_single_neighbor
+    @countries.select{|country| country.border_countries == 1 and country.landlocked}.map{|country| country.name}
   end
 
   def find_most_capital_block(dgs)
     #degrees means the degrees extent of the altitude and longitude of a "rectangular" block
-    return nil unless dgs.class == Fixnum and dgs <= 180
+    return nil unless dgs.class == Fixnum and dgs <= 180 and dgs >= 1
     #The largest rectangular block possible on earth is 180 * 180 degree
     earth = Array.new(180) { |i| Array.new(360 + dgs - 1) { |i| 0 }}
     #Create a 2D array, for each earth[x][y], x is the latitude + 90, y is the longitude + 180.
@@ -481,12 +522,11 @@ class WorldsFactbook
     list = list.select{ |country| (max[1]..(max[1] + dgs - 1)).cover?(Integer(country.cap_coord_ew + 180))}
     #find out all countries that are in the dgs*dgs block we just found
     return [list, convert_coord(max[0], "latitude"), convert_coord(max[0] + dgs, "latitude"), convert_coord(max[1], "longitude"), convert_coord(max[1] + dgs, "longitude")]
-
   end
 
   def convert_coord(num, type)
     #called only by find_most_capital_block method, converts the index to a string showing latitude
-    return nil if  num == nil or type == nil
+    return "" unless [Float, Fixnum].include?(num.class) and type.class == String
     if num >= 90 and type == "latitude"
       num = num - 90
       return String(Integer(num)) + " " + String(Integer(((num) % Integer(num)) * 100)) + " S"
@@ -499,208 +539,10 @@ class WorldsFactbook
     elsif num < 180 and type == "longitude"
       num = 180 -num
       return String(Integer(num)) + " " + String(Integer(((num) % Integer(num)) * 100)) + " W"
+    else
+      return ""
     end
   end
 
 #end of class
 end
-
-class WorldsFactBookIO
-
-  def initialize
-    puts "Initializing, please wait. This may take a few minutes..."
-    @wfb = WorldsFactbook.new
-    puts "Initialization done!"
-    input_output
-  end
-
-  def input_output # This masters the sequence of questions showing up.
-    puts "\n"
-    io_geohazard_countries
-    puts "\n"
-    io_lowest_point_country
-    puts "\n"
-    io_country_in_hemisphere
-    puts "\n"
-    io_continent_parties_num
-    puts "\n"
-    io_elec_consume_rank
-    puts "\n"
-    io_religion_percent
-    puts "\n"
-    io_religion_percent
-    puts "\n"
-    io_land_lock_one_neighbor
-    puts "\n"
-    io_coastline_rank
-    puts "\n"
-    io_maximize_capital
-    puts "\n"
-    io_resource
-  end
-
-  #all the io_ methods represents the methods for user to enter values and printing out results
-  def io_geohazard_countries
-    puts "Now we will list countries in a continent that is prone to one type of natural hazard."
-    conti = input_continent #input_continent is a method to make sure the input is one continent
-    haz = input_hazards #make sure the input is one type of hazard
-    list = @wfb.list_geohazard_countries(conti, haz)
-    puts "Below is a list of countries in #{conti} that has #{haz}"
-    return nil if abnormal?(list) #If there is no bug, this will never happen. So it's just for a sign of bug
-    list.each{|country| puts country.name}
-  end
-
-  def io_lowest_point_country #please refer to the descriptions in "puts" lines for explanation of method
-    puts "Now we will list the country that has the lowest point of altitude in a continent."
-    conti = input_continent
-    country = @wfb.lowest_point_country(conti)
-    return nil if abnormal?(country)
-    puts "#{country.name} has the lowest altitude point in #{conti}."
-  end
-
-  def io_country_in_hemisphere#please refer to the descriptions in "puts" lines for explanation of method
-    puts "Now we will list all countries in one hemisphere of earth."
-    hem = input_hemisphere
-    list = @wfb.countries_hemisphere(hem)
-    return nil if abnormal?(list)
-    puts "Below is a list of countries in #{hem} hemisphere"
-    list.each{|country| puts country.name}
-  end
-
-  def io_continent_parties_num#please refer to the descriptions in "puts" lines for explanation of method
-    puts "Now we will list countries in a continent that has more than certain number of political parties."
-    conti = input_continent
-    num = input_integer
-    list = @wfb.continent_parties_num(conti, num)
-    return nil if abnormal?(list)
-    puts "Below are the countries with more than #{num} parties in #{conti}"
-    list.each{|country| puts country.name}
-  end
-
-  def io_elec_consume_rank#please refer to the descriptions in "puts" lines for explanation of method
-    puts "Now we will list the first # of countries in the world with the highest electricity consumption per capita:"
-    num = input_integer
-    list = @wfb.elec_consume_rank(num)
-    return nil if abnormal?(list)
-    puts "Below are the top #{num} countries in the world with the highest electricity consumption per capita:"
-    list.each{|country| puts country.name + "\t" +"%.0f" %country.elec_consume_per_capita + " kWh/capita"}
-  end
-
-  def io_religion_percent#please refer to the descriptions in "puts" lines for explanation of method
-    puts "Now we will list the countries in the world in where the dominate religion takes more than (or less than) certain percent of population"
-    puts "Please enter a '>' or '<' sign followed by a percent. For example: > 80%"
-    sign = {">" => 1, "<" => -1}
-    while true #The input must match >80%, < 50%, etc. A > or < sign and % is needed. number can be float
-      percent = gets.chomp
-      matched = percent.match(/([><]) *(\d+\.*\d*) *%/)
-      #match[1] is > or < sign, match[2] is a percent number
-      break if matched != nil and sign[matched[1]] != nil
-      puts "Wrong input! please enter again: (such as <50%)"
-    end
-    list = @wfb.religion_percent(percent)
-    return nil if abnormal?(list)
-    puts "Below is the list for matched countries for religions"
-    list.each{|country| print country.name, "\t", country.dominate_religion, "\t", country.domi_relig_percent, "%\n"}
-  end
-
-  def io_land_lock_one_neighbor#please refer to the descriptions in "puts" lines for explanation of method
-    list = @wfb.landlocked
-    #select countries landlocked and has only one boundary country
-    puts "Below are countries that are landlocked by a single country"
-    list.each{|country| puts country.name}
-  end
-
-  def io_maximize_capital#please refer to the descriptions in "puts" lines for explanation of method
-    puts "Extra Credit question, given a number that is the extent of lat/long in one block on earth,
-    find the lat/long coordinates and the list of countries/capitals so that the number of capitals is maximized."
-    num = input_integer
-    result = @wfb.find_most_capital_block(num)
-    puts "The region has been found:"
-    puts "Latitude: From " + result[1] + " to " + result[2]
-    puts "Longitude: From " + result[3] + " to " + result[4]
-    puts "Below is the list for all the countries and their capitals inside that area:"
-    result[0].each{|country| puts country.name + "\t" + country.capital + "\t" + @wfb.convert_coord(country.cap_coord_sn + 90, "latitude") + "\t" + @wfb.convert_coord(country.cap_coord_ew + 180, "longitude")}
-  end
-
-  def io_coastline_rank#please refer to the descriptions in "puts" lines for explanation of method
-    puts "Wild card question 1: \n Please put in a country name, this method tells the rank of its coastline length among countries"
-    while true
-      country = gets.chomp
-      rank = @wfb.coastline_rank(country)
-      break if rank != nil
-      puts "Invalid name! Is the spelling of your country name wrong?"
-    end
-    puts "The rank of its coastline length among countries is: #{rank}"
-  end
-
-  def io_resource#please refer to the descriptions in "puts" lines for explanation of method
-    puts "Extra credit, Wild card question 2: \n Please put in the name of a natural resource, this method tells which countries have such resource"
-    while true
-      resource = gets.chomp
-      list = @wfb.country_resource(resource)
-      break if list != nil
-      puts "Sorry, we can't identify the name of this natural resource. Try again:"
-    end
-    puts "The countries with #{resource} are:"
-    list.each{|country| puts country.name}
-  end
-
-  def abnormal?(arg) #return true with
-    if arg == nil
-      puts "No result found!"
-      return true
-    end
-    return false
-  end
-
-  def input_hemisphere
-    hemispheres = ["southeastern", "northeastern", "southwestern", "northwestern"]
-    puts "Please enter one of southeastern, northeastern, southwestern, northwestern:"
-    while true
-      hem = gets.chomp.to_s.strip.downcase
-      break if hemispheres.include?(hem)
-      puts "Wrong input! please put in one of [southeastern, northeastern, southwestern, northwestern]!"
-    end
-    return hem
-  end
-
-  def input_integer
-    puts "Please enter a number:"
-    while true
-      num = gets.chomp
-      break if num.to_i.to_s == num#check if input is an integer
-      puts "Wrong input, please enter a number:"
-    end
-    return num.to_i
-  end
-
-  def input_continent
-    puts "What continent? Options: Asia, Africa, Europe, North America, South America, Oceania"
-    continents = ["asia", "africa", "europe", "north america", "south america", "oceania"]
-    while true
-      conti = gets.chomp.to_s.strip.downcase
-      break if continents.include?(conti)
-      puts "Your input is not one of the continents, please enter again: "
-    end
-    return conti
-  end
-
-  def input_hazards
-    print "what natural hazard? "
-    hazards = ["earthquake", "flood", "drought", "tsunami", "mudslide", "typhoon", "avalanche", "storm",
-               "hurricane", "windstorm", "cyclone", "forest fire", "maritime hazard", "harmattan",
-               "monsoonal rain", "monsoon rain", "volcano"]
-    hazards[0...-1].each{|elem| print elem + "; "}
-    puts hazards[-1]
-    while true
-      haz = gets.chomp.to_s.strip.downcase
-      break if hazards.include?(haz)
-      puts "Your input is not one of the natural hazards, please enter again: "
-    end
-    return haz
-  end
-
-end
-
-
-# WorldsFactBookIO.new
